@@ -1,0 +1,46 @@
+======== Warning: Event "threads_launched" cannot be found on device 1.
+==11572== NVPROF is profiling process 11572, command: ./eps /home/aq10/Experiments/Lonestar/datasets/out.adjnoun_adjacency_adjacency_beg_pos.bin /home/aq10/Experiments/Lonestar/datasets/out.adjnoun_adjacency_adjacency_csr.bin
+==11572== Profiling application: ./eps /home/aq10/Experiments/Lonestar/datasets/out.adjnoun_adjacency_adjacency_beg_pos.bin /home/aq10/Experiments/Lonestar/datasets/out.adjnoun_adjacency_adjacency_csr.bin
+==11572== Profiling result:
+==11572== Event result:
+Invocations                                Event Name         Min         Max         Avg
+Device "Tesla K40c (0)"
+	Kernel: void init_expand_sort<int, int, unsigned char>(int, unsigned char*)
+          1                          threads_launched           1           1           1
+          1                           sm_cta_launched           1           1           1
+	Kernel: void sort_bu_dist_inspect_clfy<int, int, unsigned char>(int*, int*, int*, int*, int*, int*, unsigned char*, unsigned char, int, int, int, int)
+          4                          threads_launched     1048576     1048576     1048576
+          4                           sm_cta_launched        1024        1024        1024
+	Kernel: void reaper<int, int>(int*, int*, int*, int*, int)
+         21                          threads_launched     1048576     1048576     1048576
+         21                           sm_cta_launched        1024        1024        1024
+	Kernel: void __insp_post_scan<int, int>(int*, int*, int, int, int, ex_q_t)
+         21                          threads_launched      262144      262144      262144
+         21                           sm_cta_launched         512         512         512
+	Kernel: void sort_dist_inspect_clfy<int, int, unsigned char>(int*, int*, int*, int*, int*, int*, int*, unsigned char*, unsigned char, int, int, int, int)
+          3                          threads_launched     1048576     1048576     1048576
+          3                           sm_cta_launched        1024        1024        1024
+	Kernel: void THD_expand_sort<int, int, unsigned char>(unsigned char*, int, int const *)
+          2                          threads_launched     1048576     1048576     1048576
+          2                           sm_cta_launched        1024        1024        1024
+	Kernel: void __insp_pre_scan<int, int>(int*, int*, int*, int, int)
+         21                          threads_launched      262144      262144      262144
+         21                           sm_cta_launched         512         512         512
+	Kernel: void WAP_expand_sort<int, int, unsigned char>(unsigned char*, int, int const *)
+          2                          threads_launched     1048576     1048576     1048576
+          2                           sm_cta_launched        1024        1024        1024
+	Kernel: void CTA_bu_expand_sort<int, int, unsigned char>(unsigned char*, int, int const *)
+          4                          threads_launched     1048576     1048576     1048576
+          4                           sm_cta_launched        1024        1024        1024
+	Kernel: void sort_switch_dist_inspect_clfy<int, int, unsigned char>(int*, int*, int*, int*, int*, int*, unsigned char*, unsigned char, int, int, int, int)
+          1                          threads_launched     1048576     1048576     1048576
+          1                           sm_cta_launched        1024        1024        1024
+	Kernel: void CTA_expand_sort<int, int, unsigned char>(unsigned char*, int, int const *)
+          2                          threads_launched     1048576     1048576     1048576
+          2                           sm_cta_launched        1024        1024        1024
+	Kernel: void WAP_bu_expand_sort<int, int, unsigned char>(unsigned char*, int, int const *)
+          4                          threads_launched     1048576     1048576     1048576
+          4                           sm_cta_launched        1024        1024        1024
+	Kernel: void THD_bu_expand_sort<int, int, unsigned char>(unsigned char*, int, int const *)
+          4                          threads_launched     1048576     1048576     1048576
+          4                           sm_cta_launched        1024        1024        1024

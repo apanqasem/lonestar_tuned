@@ -1,0 +1,55 @@
+CC_OPTLEVEL=-O3
+PTX_OPTLEVEL=-O3
+
+BIN    		:= $(TOPLEVEL)/bin
+INPUTS 		:= $(TOPLEVEL)/inputs
+
+NVCC 		:= nvcc # clang++
+GCC  		:= nvcc # clang++
+CC := $(GCC)
+CUB_DIR := $(HOME)/Experiments/Lonestar/include/cub-1.7.0
+
+REGCAP=#--maxrregcount=512
+BLOCKPARAM=
+LAUNCH=
+ML_MAX_THRDS_PER_BLK=
+ML_MIN_BLKS_PER_MP=
+
+GCC_OPTS=#-Xcompiler -fno-cprop-registers -Xcompiler -fno-merge-constants
+COMPUTECAPABILITY := sm_61
+ifdef debug
+FLAGS := -arch=$(COMPUTECAPABILITY) -g -DLSGDEBUG=1 -G
+else
+#--ptxas-options --device-function-maxrregcount=16
+# including -lineinfo -G causes launches to fail because of lack of resources, pity.
+FLAGS := -v -g $(LAUNCH) $(ML_MAX_THRDS_PER_BLK) $(ML_MIN_BLKS_PER_MP) $(CC_OPTLEVEL) $(GCC_OPTS) -arch=$(COMPUTECAPABILITY) $(BLOCKPARAM)   --ptxas-options $(PTX_OPTLEVEL) $(REGCAP) --ptxas-options=-v -w #-lineinfo -G
+endif
+INCLUDES := -I $(TOPLEVEL)/include -I $(CUB_DIR)
+LINKS := 
+
+
+EXTRA := $(FLAGS) $(INCLUDES) $(LINKS)
+
+.PHONY: clean variants support optional-variants
+
+ifdef APP
+$(APP): $(SRC) $(INC)
+	$(NVCC) $(EXTRA) -DVARIANT=0 -o $@ $<
+	cp $@ $(BIN)
+
+variants: $(VARIANTS)
+
+optional-variants: $(OPTIONAL_VARIANTS)
+
+support: $(SUPPORT)
+
+clean: 
+	rm -f $(APP) $(BIN)/$(APP)
+ifdef VARIANTS
+	rm -f $(VARIANTS)
+endif
+ifdef OPTIONAL_VARIANTS
+	rm -f $(OPTIONAL_VARIANTS)
+endif
+
+endif
