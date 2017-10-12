@@ -1,0 +1,7 @@
+# don't put data sets under git
+
+datasets
+
+# emacs bkup files
+
+*~
