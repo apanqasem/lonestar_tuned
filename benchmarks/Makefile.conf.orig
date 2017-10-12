@@ -16,7 +16,7 @@ ML_MAX_THRDS_PER_BLK=
 ML_MIN_BLKS_PER_MP=
 
 GCC_OPTS=#-Xcompiler -fno-cprop-registers -Xcompiler -fno-merge-constants
-COMPUTECAPABILITY := sm_61
+COMPUTECAPABILITY := sm_50
 ifdef debug
 FLAGS := -arch=$(COMPUTECAPABILITY) -g -DLSGDEBUG=1 -G
 else
@@ -44,7 +44,7 @@ optional-variants: $(OPTIONAL_VARIANTS)
 support: $(SUPPORT)
 
 clean: 
-	rm -f $(APP) $(BIN)/$(APP)
+	rm -f $(APP) *~ *.gen results.dat $(BIN)/$(APP) 
 ifdef VARIANTS
 	rm -f $(VARIANTS)
 endif
