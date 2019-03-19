@@ -32,20 +32,20 @@
 
 __global__
 void dverifysolution(foru *dist, Graph graph, unsigned *nerr) {
-	unsigned int nn = (blockIdx.x * blockDim.x + threadIdx.x);
-	  if (nn < graph.nnodes) {
-		unsigned int nsrcedges = graph.getOutDegree(nn);
-		for (unsigned ii = 0; ii < nsrcedges; ++ii) {
-			unsigned int u = nn;
-			unsigned int v = graph.getDestination(u, ii);
-			foru wt = 1;
-
-			if (wt > 0 && dist[u] + wt < dist[v]) {
-			  //printf("%d %d %d %d\n", u, v, dist[u], dist[v]);
-			  ++*nerr;
-			}
-		}
-	  }	
+  unsigned int nn = (blockIdx.x * blockDim.x + threadIdx.x);
+  if (nn < graph.nnodes) {
+    unsigned int nsrcedges = graph.getOutDegree(nn);
+    for (unsigned ii = 0; ii < nsrcedges; ++ii) {
+      unsigned int u = nn;
+      unsigned int v = graph.getDestination(u, ii);
+      foru wt = 1;
+      
+      if (wt > 0 && dist[u] + wt < dist[v]) {
+	//	printf("%d %d %d %d\n", u, v, dist[u], dist[v]);
+	++*nerr;
+      }
+    }
+  }	
 }
 
 // __global__
@@ -95,46 +95,114 @@ void write_solution(const char *fname, Graph &graph, foru *dist)
   free(h_dist);
 }
 
+
 int main(int argc, char *argv[]) {
 	unsigned intzero = 0;
 	Graph hgraph, graph;
 	unsigned *nerr, hnerr;
 	KernelConfig kconf;
-	foru *dist;
+	foru *dist, *hdist;
 
 	if (argc != 2) {
-		printf("Usage: %s <graph>\n", argv[0]);
-		exit(1);
+	  printf("Usage: %s <graph>\n", argv[0]);
+	  exit(1);
 	}
 
 	cudaSetDeviceFlags(cudaDeviceMapHost);
 	cudaGetLastError();
 
 	hgraph.read(argv[1]);
-	hgraph.cudaCopy(graph);
+	double starttime, endtime;
 
-	if (cudaMalloc((void **)&dist, graph.nnodes * sizeof(foru)) != cudaSuccess) CudaTest("allocating dist failed");
+#if defined DEV || OUT
+	starttime = rtclock();
+	hgraph.cudaCopy(graph);
+	endtime = rtclock();
+#endif
+       
+#if defined HOST || OUT || SELECT
+	if (cudaMallocManaged(&hdist, hgraph.nnodes * sizeof(foru)) != cudaSuccess)
+	  CudaTest("allocating dist failed");
+	cudaMemset(hdist, 0, hgraph.nnodes * sizeof(foru));
+#endif
+#if defined IN
+	if (cudaMalloc((void **)&dist, hgraph.nnodes * sizeof(foru)) != cudaSuccess)
+	  CudaTest("allocating dist failed");
+	cudaMemset(dist, 0, hgraph.nnodes * sizeof(foru));
+#endif
+#if defined DEV
+	if (cudaMalloc((void **)&dist, graph.nnodes * sizeof(foru)) != cudaSuccess)
+	  CudaTest("allocating dist failed");
 	cudaMemset(dist, 0, graph.nnodes * sizeof(foru));
+#endif
 
 #if VARIANT==BFS_MERRILL
 	bfs_merrill(graph, dist);
 #else
+#if defined HOST || SELECT
+	bfs(hgraph, hdist);
+#endif
+#ifdef IN
+	bfs(hgraph, dist);
+#endif
+#ifdef OUT
+	bfs(graph, hdist);
+#endif
+#ifdef DEV
 	bfs(graph, dist);
 #endif
+#endif
+
 	if (cudaMalloc((void **)&nerr, sizeof(unsigned)) != cudaSuccess) CudaTest("allocating nerr failed");
 
 	CUDA_SAFE_CALL(cudaMemcpy(nerr, &intzero, sizeof(intzero), cudaMemcpyHostToDevice));
 
+#if defined HOST || SELECT
+	kconf.setProblemSize(hgraph.nnodes);
+	kconf.setMaxThreadsPerBlock();
+	dverifysolution<<<kconf.getNumberOfBlocks(), kconf.getNumberOfBlockThreads()>>>
+	  (hdist, hgraph, nerr);
+#endif
+#ifdef IN
+	kconf.setProblemSize(hgraph.nnodes);
+	kconf.setMaxThreadsPerBlock();
+	dverifysolution<<<kconf.getNumberOfBlocks(), kconf.getNumberOfBlockThreads()>>>
+	  (dist, hgraph, nerr);
+#endif
+#ifdef OUT
 	kconf.setProblemSize(graph.nnodes);
 	kconf.setMaxThreadsPerBlock();
-	printf("verifying.\n");
-	dverifysolution<<<kconf.getNumberOfBlocks(), kconf.getNumberOfBlockThreads()>>> (dist, graph, nerr);
+	dverifysolution<<<kconf.getNumberOfBlocks(), kconf.getNumberOfBlockThreads()>>>
+	  (hdist, graph, nerr);
+#endif
+#ifdef DEV	
+	kconf.setProblemSize(graph.nnodes);
+	kconf.setMaxThreadsPerBlock();
+       	dverifysolution<<<kconf.getNumberOfBlocks(), kconf.getNumberOfBlockThreads()>>>
+	  (dist, graph, nerr);
+#endif
+
 	CudaTest("dverifysolution failed");
 	CUDA_SAFE_CALL(cudaMemcpy(&hnerr, nerr, sizeof(hnerr), cudaMemcpyDeviceToHost));
 	printf("\tno of errors = %d.\n", hnerr);
-
+#if defined HOST || SELECT 
+	write_solution("bfs-output.txt", hgraph, hdist);
+#endif
+#ifdef IN
+	write_solution("bfs-output.txt", hgraph, dist);
+#endif
+#ifdef OUT
+	write_solution("bfs-output.txt", graph, hdist);
+#endif
+#ifdef DEV
 	write_solution("bfs-output.txt", graph, dist);
-
+#endif
+       
+#ifdef TIMER
+	printf(",%3.4f", 1000 * (endtime - starttime));
+	//	printf("\truntime [%s] = %f ms.\n", BFS_VARIANT, 1000 * (endtime - starttime));
+	printf("\n");
+#endif
 	// cleanup left to the OS.
 
 	return 0;

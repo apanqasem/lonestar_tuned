@@ -178,7 +178,22 @@ unsigned Graph::init() {
 
 	return 0;
 }
+
 unsigned Graph::allocOnHost() {
+#if defined HOST || IN || SELECT
+	cudaMallocManaged(&edgessrcdst,(nedges+1) * sizeof(unsigned int));	// first entry acts as null.
+	cudaMallocManaged(&edgessrcwt,(nedges+1) * sizeof(foru));	// first entry acts as null.
+	cudaMallocManaged(&psrc, (nnodes+1) * sizeof(unsigned int));	// init to null.
+	psrc[nnodes] = nedges;	// last entry points to end of edges, to avoid thread divergence in drelax.
+	cudaMallocManaged(&noutgoing, nnodes * sizeof(unsigned int));	// init to 0.
+	cudaMallocManaged(&nincoming, nnodes * sizeof(unsigned int));	// init to 0.
+	cudaMallocManaged(&srcsrc, nnodes * sizeof(unsigned int));
+
+	cudaMallocManaged(&maxOutDegree,sizeof(unsigned));
+	cudaMallocManaged(&maxInDegree,sizeof(unsigned));
+	*maxOutDegree = 0;
+	*maxInDegree = 0;
+#else
 	edgessrcdst = (unsigned int *)malloc((nedges+1) * sizeof(unsigned int));	// first entry acts as null.
 	edgessrcwt = (foru *)malloc((nedges+1) * sizeof(foru));	// first entry acts as null.
 	psrc = (unsigned int *)calloc(nnodes+1, sizeof(unsigned int));	// init to null.
@@ -191,7 +206,7 @@ unsigned Graph::allocOnHost() {
 	maxInDegree = (unsigned *)malloc(sizeof(unsigned));
 	*maxOutDegree = 0;
 	*maxInDegree = 0;
-
+#endif
 	memory = AllocatedOnHost;
 	return 0;
 }
@@ -433,8 +448,9 @@ unsigned Graph::readFromGR(char file[]) {
 	// cuda.
 	nnodes = numNodes;
 	nedges = numEdges;
-
+#ifdef DEBUG
 	printf("nnodes=%d, nedges=%d.\n", nnodes, nedges);
+#endif
 	allocOnHost();
 
 	for (unsigned ii = 0; ii < nnodes; ++ii) {
@@ -469,9 +485,9 @@ unsigned Graph::readFromGR(char file[]) {
 	cfile.close();	// probably galois doesn't close its file due to mmap.
 
 	endtime = rtclock();
-
+#ifdef DEBUG
 	printf("read %lld bytes in %0.2f ms (%0.2f MB/s)\n", masterLength, 1000 * (endtime - starttime), (masterLength / 1048576) / (endtime - starttime));
-
+#endif
 	return 0;
 }
 unsigned Graph::read(char file[]) {
