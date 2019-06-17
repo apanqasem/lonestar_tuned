@@ -2,6 +2,9 @@
 #include "lonestargpu.h"
 #include "cutil_subset.h"
 
+#define OPTIMIZED
+//#define TILED
+
 /* 
  * Placement Scheme 
  *
