@@ -2,7 +2,7 @@
 #include "lonestargpu.h"
 #include "cutil_subset.h"
 
-#define OPTIMIZED
+//#define OPTIMIZED
 //#define TILED
 
 /* 
@@ -60,6 +60,7 @@ bool processnode(foru *dist, Graph &graph, unsigned work) {
 	return changed;
 }
 
+#ifdef TILED 
 __global__
 void drelax_tiled(foru *dist, Graph graph, bool *changed) {
 	unsigned id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -74,9 +75,14 @@ void drelax_tiled(foru *dist, Graph graph, bool *changed) {
 	  }
 	} while ((*changed));
 }
+#endif
 
 __global__
-void drelax(foru *dist, Graph graph, bool *changed) {
+void
+#ifdef LAUNCH
+__launch_bounds__(ML_MAX_THRDS_PER_BLK, ML_MIN_BLKS_PER_MP)
+#endif
+drelax(foru *dist, Graph graph, bool *changed) {
 	unsigned id = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned start = id * (MAXBLOCKSIZE / blockDim.x), end = (id + 1) * (MAXBLOCKSIZE / blockDim.x);
 
@@ -97,9 +103,12 @@ void bfs(Graph &graph, foru *dist)
 	bool *changed, hchanged;
 	int iteration = 0;
 
+	kconf.setMaxThreadsPerBlock();
+#ifdef ML
+	kconf.setBlockSize(__BLOCKSIZE);
+#endif
 	kconf.setProblemSize(graph.nnodes);
 
-	kconf.setMaxThreadsPerBlock();
 	//	printf("initializing.\n");
 	assert(kconf.coversProblem(0));
 	starttime = rtclock();
@@ -141,6 +150,7 @@ void bfs(Graph &graph, foru *dist)
 	do {
 	  ++iteration;
 	  (*changed) = false;
+          printf("Launch = %d %d\n", kconf.getNumberOfBlocks(), kconf.getNumberOfBlockThreads());
 	  drelax <<<kconf.getNumberOfBlocks(), kconf.getNumberOfBlockThreads()>>> (dist, graph, changed);
 	  CUDA_SAFE_CALL(cudaDeviceSynchronize());
 	  CudaTest("solving failed");
@@ -150,6 +160,7 @@ void bfs(Graph &graph, foru *dist)
 	  ++iteration;
 	  hchanged = false;
 	  CUDA_SAFE_CALL(cudaMemcpy(changed, &hchanged, sizeof(hchanged), cudaMemcpyHostToDevice));
+          printf("Launch = %d %d\n", kconf.getNumberOfBlocks(), kconf.getNumberOfBlockThreads());
 	  drelax <<<kconf.getNumberOfBlocks(), kconf.getNumberOfBlockThreads()>>> (dist, graph, changed);
 	  CudaTest("solving failed");
 	  
@@ -162,5 +173,5 @@ void bfs(Graph &graph, foru *dist)
 
 	//	printf("iterations = %d\n", iteration);
 	//	printf("\truntime [%s] = %f ms.\n", BFS_VARIANT, 1000 * (endtime - starttime));
-	printf("%3.4f,%3.4f", 1000 * (endtime - starttime),init_time);
+	//	printf("%3.4f,%3.4f", 1000 * (endtime - starttime),init_time);
 }
