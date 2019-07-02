@@ -116,7 +116,8 @@ int main(int argc, char *argv[]) {
 
 #if defined DEV || OUT
 	starttime = rtclock();
-	hgraph.cudaCopy(graph);
+	unsigned long size = hgraph.cudaCopy(graph);
+	printf("size = %lu\n", size);
 	endtime = rtclock();
 #endif
        
