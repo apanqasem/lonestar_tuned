@@ -78,7 +78,11 @@ void drelax_tiled(foru *dist, Graph graph, bool *changed) {
 #endif
 
 __global__
-void drelax(foru *dist, Graph graph, bool *changed) {
+void
+#ifdef LAUNCH
+__launch_bounds__(ML_MAX_THRDS_PER_BLK, ML_MIN_BLKS_PER_MP)
+#endif
+drelax(foru *dist, Graph graph, bool *changed) {
 	unsigned id = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned start = id * (MAXBLOCKSIZE / blockDim.x), end = (id + 1) * (MAXBLOCKSIZE / blockDim.x);
 
